@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 import httpx
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -18,25 +20,30 @@ def get_age_group(age):
         return "senior"
 
 
+def _fetch_json(url):
+    with httpx.Client(timeout=10.0) as client:
+        return client.get(url).json()
+
+
 def call_external_apis(name):
     """
     Call all three external APIs concurrently and return processed data.
     Returns (data_dict, error_response) — one will always be None.
     """
-    import asyncio
+    urls = [
+        f"https://api.genderize.io?name={name}",
+        f"https://api.agify.io?name={name}",
+        f"https://api.nationalize.io?name={name}",
+    ]
 
-    async def fetch_all():
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            gender_task = client.get(f"https://api.genderize.io?name={name}")
-            age_task = client.get(f"https://api.agify.io?name={name}")
-            nation_task = client.get(f"https://api.nationalize.io?name={name}")
-
-            gender_res, age_res, nation_res = await asyncio.gather(
-                gender_task, age_task, nation_task
-            )
-            return gender_res.json(), age_res.json(), nation_res.json()
-
-    gender_data, age_data, nation_data = asyncio.run(fetch_all())
+    try:
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            gender_data, age_data, nation_data = list(pool.map(_fetch_json, urls))
+    except Exception:
+        return None, Response(
+            {"status": "error", "message": "External API request failed"},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
 
     # Validate Genderize response
     if not gender_data.get("gender") or gender_data.get("count", 0) == 0:
