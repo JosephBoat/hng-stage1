@@ -1,7 +1,5 @@
 import os
 from pathlib import Path
-
-import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -71,17 +69,21 @@ WSGI_APPLICATION = "core.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL environment variable is required")
-
 DATABASES = {
-    "default": dj_database_url.parse(
-        DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=True,
-    )
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DATABASE_URL"),
+    }
 }
+
+# This tells Django to parse the full DATABASE_URL string
+import dj_database_url
+
+DATABASES["default"] = dj_database_url.parse(
+    os.getenv("DATABASE_URL"),
+    conn_max_age=600,
+    ssl_require=True,
+)
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -127,9 +129,4 @@ REST_FRAMEWORK = {
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
-}
-
 CORS_ALLOW_ALL_ORIGINS = True
