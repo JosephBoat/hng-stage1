@@ -1,84 +1,88 @@
-# Stage 1 — Profiles API
+# Stage 1 Profiles API
 
-Django + DRF service that accepts a name, enriches it via three public APIs
-([Genderize](https://genderize.io), [Agify](https://agify.io),
-[Nationalize](https://nationalize.io)), classifies the result, persists it to
-Postgres, and exposes a small REST API over the stored profiles.
+A REST API that accepts a name, calls three external APIs, classifies the result, stores it in a PostgreSQL database, and exposes endpoints to manage profiles.
 
-## Stack
+## Live API
 
-- Python 3.12
-- Django 6 + Django REST Framework
-- PostgreSQL (Neon) via `dj-database-url`
-- `httpx` for concurrent external calls
-- `uuid6` for UUID v7 primary keys
-- `whitenoise` for static files
-- `gunicorn` as the WSGI server
+```
+https://urgent-janella-josephboateng-d9be4c60.koyeb.app
+```
+
+## Tech Stack
+
+- **Framework:** Django + Django REST Framework
+- **Database:** PostgreSQL (Neon)
+- **Deployment:** Koyeb
 
 ## Endpoints
 
-Base path: `/api`
-
-| Method | Path                    | Description                                   |
-| ------ | ----------------------- | --------------------------------------------- |
-| POST   | `/api/profiles`         | Create a profile (idempotent on `name`)       |
-| GET    | `/api/profiles`         | List profiles; filter by `gender`, `country_id`, `age_group` (case-insensitive) |
-| GET    | `/api/profiles/{id}`    | Fetch one profile                             |
-| DELETE | `/api/profiles/{id}`    | Delete one profile (204 No Content)           |
-
-### Create
-
-```http
+### Create Profile
+```
 POST /api/profiles
 Content-Type: application/json
 
-{ "name": "ella" }
+{ "name": "john" }
+```
+Calls Genderize, Agify, and Nationalize APIs concurrently, classifies the result, and stores it. Returns existing profile if name already exists.
+
+### Get All Profiles
+```
+GET /api/profiles
+```
+Optional filters: `gender`, `country_id`, `age_group` (all case-insensitive)
+```
+GET /api/profiles?gender=male&country_id=NG
 ```
 
-Returns `201 Created` with the enriched profile, or `200 OK` with
-`"Profile already exists"` if the name has been seen before.
+### Get Single Profile
+```
+GET /api/profiles/{id}
+```
 
-### Age group rules
+### Delete Profile
+```
+DELETE /api/profiles/{id}
+```
+Returns 204 No Content on success.
 
-- `0-12` → `child`
-- `13-19` → `teenager`
-- `20-59` → `adult`
-- `60+` → `senior`
+## Error Responses
 
-### Error shape
-
+All errors follow this structure:
 ```json
-{ "status": "error", "message": "<reason>" }
+{ "status": "error", "message": "<error message>" }
 ```
 
-- `400` — missing/empty name
-- `422` — name is not a string
-- `404` — profile not found
-- `502` — upstream API returned an invalid response (per-provider message)
+| Status | Meaning |
+|--------|---------|
+| 400 | Missing or empty name |
+| 422 | name is not a string |
+| 404 | Profile not found |
+| 502 | External API returned invalid response |
 
-## Local development
+## Classification Rules
+
+- **Age group:** 0–12 → child, 13–19 → teenager, 20–59 → adult, 60+ → senior
+- **Nationality:** country with highest probability from Nationalize API
+- **IDs:** UUID v7
+
+## Local Setup
 
 ```bash
+git clone <your-repo-url>
+cd stage1-profiles
 python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+source venv/Scripts/activate  # Windows Git Bash
 pip install -r requirements.txt
+```
 
-# .env
-# DATABASE_URL=postgresql://...
-# SECRET_KEY=...
-# DEBUG=True
+Create a `.env` file:
+```
+DATABASE_URL=your_neon_postgres_url
+SECRET_KEY=your_secret_key
+DEBUG=False
+```
 
+```bash
 python manage.py migrate
 python manage.py runserver
 ```
-
-## Deployment (Koyeb)
-
-Environment variables required:
-
-- `DATABASE_URL` — Postgres connection string (Neon with `sslmode=require`)
-- `SECRET_KEY` — any long random string
-- `DEBUG` — `False` in production
-
-The included `Procfile` runs `python manage.py migrate --noinput` as the
-release step and starts `gunicorn core.wsgi` as the web process.
