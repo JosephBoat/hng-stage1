@@ -3,6 +3,8 @@ from .models import Profile
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    """Full profile details — used for create and get single endpoints"""
+
     class Meta:
         model = Profile
         fields = [
@@ -10,17 +12,17 @@ class ProfileSerializer(serializers.ModelSerializer):
             "name",
             "gender",
             "gender_probability",
-            "sample_size",
             "age",
             "age_group",
             "country_id",
+            "country_name",
             "country_probability",
             "created_at",
         ]
 
 
 class ProfileListSerializer(serializers.ModelSerializer):
-    """Serializer for the GET all profiles endpoint - returns fewer fields"""
+    """Used for GET all profiles — includes country_name as required by Stage 2"""
 
     class Meta:
         model = Profile
@@ -28,7 +30,11 @@ class ProfileListSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "gender",
+            "gender_probability",
             "age",
             "age_group",
             "country_id",
+            "country_name",
+            "country_probability",
+            "created_at",
         ]
