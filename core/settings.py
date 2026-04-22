@@ -39,7 +39,6 @@ DATABASES = {
         ssl_require=True,
     )
 }
-
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_TZ = True

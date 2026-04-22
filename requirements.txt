@@ -29,4 +29,4 @@ sqlparse==0.5.5
 typing_extensions==4.15.0
 tzdata==2026.1
 uuid6==2025.0.1
-whitenoise==6.8.2
+whitenoise==6.12.0
